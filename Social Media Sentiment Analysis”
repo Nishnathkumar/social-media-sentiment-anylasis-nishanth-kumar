@@ -1,0 +1,76 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+from collections import Counter
+
+# Load your Twitter data (assuming it's stored in 'LabeledText (1).csv')
+raw_twitter_data = pd.read_csv('LabeledText (1).csv')
+
+# Correct label mapping
+twitter_data = raw_twitter_data.copy()
+label_mapping = {'positive': 1, 'negative': 0, 'neutral': 2}
+twitter_data['LABEL'] = twitter_data['LABEL'].map(label_mapping)
+
+X = twitter_data['Caption']
+Y = twitter_data['LABEL']
+
+# Split the data into training and test sets
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=3)
+
+# Initialize the TF-IDF vectorizer and fit it on the entire dataset
+tfidf_vectorizer = TfidfVectorizer(min_df=1, stop_words='english', lowercase=True)
+X_tfidf = tfidf_vectorizer.fit_transform(X)
+
+# Transform the training and test data using the same vectorizer
+X_train_tfidf = tfidf_vectorizer.transform(X_train)
+X_test_tfidf = tfidf_vectorizer.transform(X_test)
+
+# Initialize and train the Logistic Regression model
+model = LogisticRegression()
+model.fit(X_train_tfidf, Y_train)
+
+# Evaluate the model on the training and test data
+prediction_on_training_data = model.predict(X_train_tfidf)
+accuracy_on_training_data = accuracy_score(Y_train, prediction_on_training_data)
+print("Accuracy on training data:", accuracy_on_training_data)
+
+prediction_on_test_data = model.predict(X_test_tfidf)
+accuracy_on_test_data = accuracy_score(Y_test, prediction_on_test_data)
+print("Accuracy on test data:", accuracy_on_test_data)
+
+# Separate positive and negative tweets for EDA
+positive_tweets = X[Y == 1]
+negative_tweets = X[Y == 0]
+
+# Join the positive and negative tweets into single strings
+all_positive_tweets = " ".join(positive_tweets)
+all_negative_tweets = " ".join(negative_tweets)
+
+# Create WordCloud for positive tweets
+wordcloud_positive = WordCloud(width=800, height=800,
+                               background_color='white',
+                               min_font_size=10).generate(all_positive_tweets)
+
+# Create WordCloud for negative tweets
+wordcloud_negative = WordCloud(width=800, height=800,
+                               background_color='white',
+                               min_font_size=10).generate(all_negative_tweets)
+
+# Plot the WordClouds
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.imshow(wordcloud_positive, interpolation='bilinear')
+plt.title('Word Cloud for Positive Tweets')
+plt.axis("off")
+plt.subplot(1, 2, 2)
+plt.imshow(wordcloud_negative, interpolation='bilinear')
+plt.title('Word Cloud for Negative Tweets')
+plt.axis("off")
+plt.tight_layout()
+plt.show()
+
